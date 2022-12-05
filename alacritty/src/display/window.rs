@@ -202,6 +202,22 @@ impl Window {
         })
     }
 
+    #[cfg(target_os = "macos")]
+    pub fn add_window_as_tab(&self, tab: &Window) {
+        self.window.add_window_as_tab(&tab.window);
+        // self.window.add_window_as_tab(tab.window.ns_window());
+    }
+
+    #[cfg(target_os = "macos")]
+    pub fn select_next_tab(&self) {
+        self.window.select_next_tab();
+    }
+
+    #[cfg(target_os = "macos")]
+    pub fn select_previous_tab(&self) {
+        self.window.select_previous_tab();
+    }
+
     #[inline]
     pub fn raw_window_handle(&self) -> RawWindowHandle {
         self.window.raw_window_handle()
