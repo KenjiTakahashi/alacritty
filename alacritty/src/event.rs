@@ -96,6 +96,12 @@ pub enum EventType {
     Message(Message),
     Scroll(Scroll),
     CreateWindow(WindowOptions),
+    #[cfg(target_os = "macos")]
+    CreateTab(WindowOptions),
+    #[cfg(target_os = "macos")]
+    SelectNextTab,
+    #[cfg(target_os = "macos")]
+    SelectPreviousTab,
     #[cfg(unix)]
     IpcConfig(IpcConfig),
     BlinkCursor,
@@ -413,6 +419,26 @@ impl<'a, N: Notify + 'a, T: EventListener> input::ActionContext<T> for ActionCon
         let _ = self
             .event_proxy
             .send_event(Event::new(EventType::CreateWindow(WindowOptions::default()), None));
+    }
+
+    #[cfg(target_os = "macos")]
+    fn create_new_tab(&mut self) {
+        let mut options = WindowOptions::default();
+        if let Ok(working_directory) = foreground_process_path(self.master_fd, self.shell_pid) {
+            options.terminal_options.working_directory = Some(working_directory);
+        }
+
+        let _ = self.event_proxy.send_event(Event::new(EventType::CreateTab(options), None));
+    }
+
+    #[cfg(target_os = "macos")]
+    fn select_next_tab(&mut self) {
+        let _  = self.event_proxy.send_event(Event::new(EventType::SelectNextTab, None));
+    }
+
+    #[cfg(target_os = "macos")]
+    fn select_previous_tab(&mut self) {
+        let _  = self.event_proxy.send_event(Event::new(EventType::SelectPreviousTab, None));
     }
 
     fn spawn_daemon<I, S>(&self, program: &str, args: I)
@@ -1170,6 +1196,12 @@ impl input::Processor<EventProxy, ActionContext<'_, Notifier, EventProxy>> {
                 #[cfg(unix)]
                 EventType::IpcConfig(_) => (),
                 EventType::ConfigReload(_) | EventType::CreateWindow(_) => (),
+                #[cfg(target_os = "macos")]
+                EventType::CreateTab(_) => (),
+                #[cfg(target_os = "macos")]
+                EventType::SelectNextTab => (),
+                #[cfg(target_os = "macos")]
+                EventType::SelectPreviousTab => (),
             },
             WinitEvent::RedrawRequested(_) => *self.ctx.dirty = true,
             WinitEvent::WindowEvent { event, .. } => {
@@ -1274,7 +1306,9 @@ impl input::Processor<EventProxy, ActionContext<'_, Notifier, EventProxy>> {
                     | WindowEvent::ThemeChanged(_)
                     | WindowEvent::HoveredFile(_)
                     | WindowEvent::Touch(_)
-                    | WindowEvent::Moved(_) => (),
+                    | WindowEvent::Moved(_)
+                    | WindowEvent::TouchpadMagnify { .. }
+                    | WindowEvent::TouchpadRotate { .. } => (),
                 }
             },
             WinitEvent::Suspended { .. }
@@ -1367,6 +1401,46 @@ impl Processor {
         )?;
 
         self.windows.insert(window_context.id(), window_context);
+        Ok(())
+    }
+
+    #[cfg(target_os = "macos")]
+    pub fn create_tab(
+        &mut self,
+        event_loop: &EventLoopWindowTarget<Event>,
+        proxy: EventLoopProxy<Event>,
+        options: WindowOptions,
+    ) -> Result<(), Box<dyn Error>> {
+        //TODO: get the current window, rather than the whichever window this ends up being
+        //  perhaps iterate through all windows and check if they are active?
+        // let window = self.windows.iter().next().as_ref().unwrap().1;
+        let window = self.windows.iter().find(|(_, context)| context.focused()).unwrap().1;
+        let window_context = window.additional(
+            event_loop,
+            proxy,
+            self.config.clone(),
+            options,
+            #[cfg(all(feature = "wayland", not(any(target_os = "macos", windows))))]
+            self.wayland_event_queue.as_ref(),
+        )?;
+        window.display.window.add_window_as_tab(&window_context.display.window);
+        // window_context.display.window.add_window_as_tab(None);
+
+        self.windows.insert(window_context.id(), window_context);
+        Ok(())
+    }
+
+    #[cfg(target_os = "macos")]
+    pub fn select_next_tab(&mut self) -> Result<(), Box<dyn Error>> {
+        let window = self.windows.iter().find(|(_, context)| context.focused()).unwrap().1;
+        window.display.window.select_next_tab();
+        Ok(())
+    }
+
+    #[cfg(target_os = "macos")]
+    pub fn select_previous_tab(&mut self) -> Result<(), Box<dyn Error>> {
+        let window = self.windows.iter().find(|(_, context)| context.focused()).unwrap().1;
+        window.display.window.select_previous_tab();
         Ok(())
     }
 
@@ -1521,6 +1595,34 @@ impl Processor {
 
                     if let Err(err) = self.create_window(event_loop, proxy.clone(), options) {
                         error!("Could not open window: {:?}", err);
+                    }
+                },
+                #[cfg(target_os = "macos")]
+                WinitEvent::UserEvent(Event {
+                    payload: EventType::CreateTab(options), ..
+                }) => {
+                    for window_context in self.windows.values_mut() {
+                        window_context.display.make_not_current();
+                    }
+
+                    if let Err(err) = self.create_tab(event_loop, proxy.clone(), options) {
+                        error!("Could not open tab: {:?}", err);
+                    }
+                },
+                #[cfg(target_os = "macos")]
+                WinitEvent::UserEvent(Event {
+                    payload: EventType::SelectNextTab, ..
+                }) => {
+                    if let Err(err) = self.select_next_tab() {
+                        error!("could not select next tab: {:?}", err);
+                    }
+                },
+                #[cfg(target_os = "macos")]
+                WinitEvent::UserEvent(Event {
+                    payload: EventType::SelectPreviousTab, ..
+                }) => {
+                    if let Err(err) = self.select_previous_tab() {
+                        error!("could not select previous tab: {:?}", err);
                     }
                 },
                 // Process events affecting all windows.
