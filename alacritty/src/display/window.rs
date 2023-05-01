@@ -30,6 +30,7 @@ use {
     cocoa::appkit::NSColorSpace,
     cocoa::base::{id, nil, NO, YES},
     objc::{msg_send, sel, sel_impl},
+    objc::runtime::{Class, Object},
     winit::platform::macos::{OptionAsAlt, WindowBuilderExtMacOS, WindowExtMacOS},
 };
 
@@ -156,7 +157,7 @@ impl Window {
             .with_title(&identity.title)
             .with_theme(config.window.decorations_theme_variant)
             .with_visible(false)
-            .with_transparent(true)
+            .with_transparent(config.window_opacity() < 1.)
             .with_maximized(config.window.maximized())
             .with_fullscreen(config.window.fullscreen())
             .build(event_loop)?;
@@ -343,6 +344,25 @@ impl Window {
 
     pub fn set_transparent(&self, transparent: bool) {
         self.window.set_transparent(transparent);
+
+        let raw_window = match self.raw_window_handle() {
+            RawWindowHandle::AppKit(handle) => handle.ns_window as id,
+            _ => return,
+        };
+
+        // If transparent, fill background with NSColor.clearColor,
+        // otherwise fill with NSColor.windowBackgroundColor so that MacOS
+        // properly draws the window's border and opaque title bar.
+        unsafe {
+            let color_class = Class::get("NSColor").unwrap();
+            let clear_color: *const Object = msg_send![color_class, clearColor];
+            let background_color: *const Object = msg_send![color_class, windowBackgroundColor];
+            if transparent {
+                let _: () = msg_send![raw_window, setBackgroundColor: clear_color];
+            } else {
+                let _: () = msg_send![raw_window, setBackgroundColor: background_color];
+            }
+        }
     }
 
     pub fn set_maximized(&self, maximized: bool) {
