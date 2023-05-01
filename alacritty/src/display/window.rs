@@ -285,6 +285,31 @@ impl Window {
         }
     }
 
+    #[cfg(target_os = "macos")]
+    pub fn select_tab(&self, n: usize) {
+        let raw_window = match self.raw_window_handle() {
+            RawWindowHandle::AppKit(handle) => handle.ns_window as id,
+            _ => return,
+        };
+
+        unsafe {
+            let tab_group: *const Object = msg_send![raw_window, tabGroup];
+            let windows: *const Object = msg_send![tab_group, windows];
+            let count: usize = msg_send![windows, count];
+            if count > 0 {
+                if count >= n && n < 9 {
+                    let index = n - 1;
+                    let window: *const Object = msg_send![windows, objectAtIndex: index];
+                    let _: () = msg_send![tab_group, setSelectedWindow: window];
+                } else if n == 9 {
+                    let index = count - 1;
+                    let window: *const Object = msg_send![windows, objectAtIndex: index];
+                    let _: () = msg_send![tab_group, setSelectedWindow: window];
+                }
+            }
+        }
+    }
+
     #[cfg(not(any(target_os = "macos", windows)))]
     pub fn get_platform_window(
         identity: &Identity,
