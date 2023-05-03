@@ -29,6 +29,7 @@ use std::sync::Arc;
 use {
     cocoa::appkit::{NSColorSpace, NSWindowOrderingMode},
     cocoa::base::{id, nil, NO, YES},
+    cocoa::foundation::NSString,
     objc::{msg_send, sel, sel_impl},
     objc::runtime::{Class, Object},
     winit::platform::macos::{OptionAsAlt, WindowBuilderExtMacOS, WindowExtMacOS},
@@ -307,6 +308,27 @@ impl Window {
                     let _: () = msg_send![tab_group, setSelectedWindow: window];
                 }
             }
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    pub fn set_title_dimensions(&self, size_info: &SizeInfo) {
+        let title = self.title();
+        let cols = size_info.columns;
+        let rows = size_info.screen_lines;
+        let win_title = format!("{title} — {cols}×{rows}");
+        self.window.set_title(&win_title);
+
+        // Reset tab title so it doesn't show dimensions.
+        let raw_window = match self.raw_window_handle() {
+            RawWindowHandle::AppKit(handle) => handle.ns_window as id,
+            _ => return,
+        };
+        unsafe {
+            let tab_title = NSString::alloc(nil).init_str(self.title());
+            let tab: *const Object = msg_send![raw_window, tab];
+            let _: () = msg_send![tab, setTitle: tab_title];
+            let _: () = msg_send![tab_title, release];
         }
     }
 

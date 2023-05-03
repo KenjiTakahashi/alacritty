@@ -655,6 +655,10 @@ impl Display {
         // Resize terminal.
         terminal.resize(new_size);
 
+        // Update window title with new dimensions.
+        #[cfg(target_os = "macos")]
+        self.window.set_title_dimensions(&new_size);
+
         // Queue renderer update if terminal dimensions/padding changed.
         if new_size != self.size_info {
             let renderer_update = self.pending_renderer_update.get_or_insert(Default::default());
