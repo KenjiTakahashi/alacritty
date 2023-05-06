@@ -1,3 +1,20 @@
+```text
+Tweaked Alacritty.app for Mac
+=============================
+* Renders windows better when opacity == 1.
+* Opens new terminals in tabs with command-T.
+* Navigates to nth tab with command-<n>.
+* Shows dimensions in window title bar.
+
+Thank you, Alacritty Developers!
+```
+
+<p align="center">
+    <img width="672" src="https://i.postimg.cc/25JC2jWB/Screenshot-2023-05-05-at-9-59-00-PM.png">
+</p>
+
+---
+
 <p align="center">
     <img width="200" alt="Alacritty Logo" src="https://raw.githubusercontent.com/alacritty/alacritty/master/extra/logo/compat/alacritty-term%2Bscanlines.png">
 </p>
