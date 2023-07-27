@@ -105,6 +105,10 @@ pub trait ActionContext<T: EventListener> {
     #[cfg(target_os = "macos")]
     fn create_new_tabbed_window(&mut self) {}
     #[cfg(target_os = "macos")]
+    fn select_next_tab(&mut self) {}
+    #[cfg(target_os = "macos")]
+    fn select_prev_tab(&mut self) {}
+    #[cfg(target_os = "macos")]
     fn select_tab(&mut self, _n: usize) {}
     fn change_font_size(&mut self, _delta: f32) {}
     fn reset_font_size(&mut self) {}
@@ -374,6 +378,10 @@ impl<T: EventListener> Execute<T> for Action {
             Action::CreateNewWindow => ctx.create_new_window(),
             #[cfg(target_os = "macos")]
             Action::CreateNewTabbedWindow => ctx.create_new_tabbed_window(),
+            #[cfg(target_os = "macos")]
+            Action::SelectNextTab => ctx.select_next_tab(),
+            #[cfg(target_os = "macos")]
+            Action::SelectPrevTab => ctx.select_prev_tab(),
             #[cfg(target_os = "macos")]
             Action::SelectTab1 => ctx.select_tab(1),
             #[cfg(target_os = "macos")]

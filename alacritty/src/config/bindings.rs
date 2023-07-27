@@ -189,6 +189,13 @@ pub enum Action {
     #[cfg(target_os = "macos")]
     CreateNewTabbedWindow,
 
+    /// Select next and previous tabs on macOS
+    #[cfg(target_os = "macos")]
+    SelectNextTab,
+
+    #[cfg(target_os = "macos")]
+    SelectPrevTab,
+
     /// Select tabs 1-9 on macOS
     #[cfg(target_os = "macos")]
     SelectTab1,
@@ -641,6 +648,8 @@ pub fn platform_key_bindings() -> Vec<KeyBinding> {
         "v",    ModifiersState::SUPER, ~BindingMode::VI;                       Action::Paste;
         "n",    ModifiersState::SUPER;                                         Action::CreateNewWindow;
         "t",    ModifiersState::SUPER;                                         Action::CreateNewTabbedWindow;
+        Tab,    ModifiersState::CONTROL;                                       Action::SelectNextTab;
+        Tab,    ModifiersState::CONTROL | ModifiersState::SHIFT;               Action::SelectPrevTab;
         "1",    ModifiersState::SUPER;                                         Action::SelectTab1;
         "2",    ModifiersState::SUPER;                                         Action::SelectTab2;
         "3",    ModifiersState::SUPER;                                         Action::SelectTab3;

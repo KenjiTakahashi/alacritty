@@ -287,6 +287,30 @@ impl Window {
     }
 
     #[cfg(target_os = "macos")]
+    pub fn select_next_tab(&self) {
+        let raw_window = match self.raw_window_handle() {
+            RawWindowHandle::AppKit(handle) => handle.ns_window as id,
+            _ => return,
+        };
+
+        unsafe {
+            let _: () = msg_send![raw_window, selectNextTab: raw_window];
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    pub fn select_prev_tab(&self) {
+        let raw_window = match self.raw_window_handle() {
+            RawWindowHandle::AppKit(handle) => handle.ns_window as id,
+            _ => return,
+        };
+
+        unsafe {
+            let _: () = msg_send![raw_window, selectPreviousTab: raw_window];
+        }
+    }
+
+    #[cfg(target_os = "macos")]
     pub fn select_tab(&self, n: usize) {
         let raw_window = match self.raw_window_handle() {
             RawWindowHandle::AppKit(handle) => handle.ns_window as id,
